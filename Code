@@ -1,0 +1,78 @@
+REPORT zmus_prg3.
+
+TYPES: BEGIN OF lty_uname,
+         bname   TYPE xubname,
+         profile TYPE xuprofile,
+       END OF lty_uname.
+
+DATA: lt_uname TYPE TABLE OF lty_uname.
+DATA: ls_uname TYPE lty_uname.
+DATA: lt_fieldcat TYPE slis_t_fieldcat_alv.
+DATA: lwa_fieldcat TYPE slis_fieldcat_alv.
+DATA: ls_superaccess TYPE char1.
+
+
+DATA: lv_bname TYPE xubname.
+
+SELECT-OPTIONS: s_bname FOR lv_bname OBLIGATORY.
+
+SELECT bname profile
+  FROM ust04
+  INTO TABLE lt_uname
+  WHERE bname IN s_bname.
+
+IF sy-subrc = 0.
+
+
+  LOOP AT lt_uname INTO ls_uname.
+    IF ls_uname-profile = 'SAP_ALL' OR ls_uname-profile = 'SAP_NEW'.
+      ls_superaccess = 'X'.
+      EXIT.
+    ELSE.
+      ls_superaccess = 'Y'.
+    ENDIF.
+
+  ENDLOOP.
+
+  IF ls_superaccess = 'X'.
+    MESSAGE 'User has superuser Access' TYPE 'I'.
+  ELSEIF ls_superaccess = 'Y'.
+    MESSAGE 'User does not has superuser Access' TYPE 'I'.
+
+  ENDIF.
+
+  IF ls_superaccess = 'X'.
+
+
+  lwa_fieldcat-row_pos = 1.
+  lwa_fieldcat-col_pos = 1.
+  lwa_fieldcat-fieldname = 'BNAME'.
+  lwa_fieldcat-tabname = 'LT_UNAME'.
+  lwa_fieldcat-seltext_l = 'User Id'.
+  APPEND lwa_fieldcat TO lt_fieldcat.
+  CLEAR lwa_fieldcat.
+  lwa_fieldcat-row_pos = 1.
+  lwa_fieldcat-col_pos = 2.
+  lwa_fieldcat-fieldname = 'PROFILE'.
+  lwa_fieldcat-tabname = 'LT_UNAME'.
+  lwa_fieldcat-seltext_l = 'Profile'.
+  APPEND lwa_fieldcat TO lt_fieldcat.
+  CLEAR lwa_fieldcat.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      i_callback_program = sy-repid
+      it_fieldcat        = lt_fieldcat
+    TABLES
+      t_outtab           = lt_uname
+    EXCEPTIONS
+      program_error      = 1
+      OTHERS             = 2.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+ENDIF.
+ELSE.
+  MESSAGE 'User does not exist' TYPE 'S' DISPLAY LIKE 'E'.
+ENDIF.
